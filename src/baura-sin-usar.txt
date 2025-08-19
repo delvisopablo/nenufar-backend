@@ -1,0 +1,504 @@
+
+// ==============================
+// 🔧 EXTENSIÓN DE ESQUEMA: subcategorías de negocio
+// ==============================
+// Añadimos un nivel intermedio para poder cargar "todos" los tipos de negocios
+// sin saturar la tabla Categoria. Los negocios podrán apuntar a una Subcategoria.
+
+model Subcategoria {
+  id          Int        @id @default(autoincrement())
+  nombre      String     @unique
+  categoriaId Int
+  categoria   Categoria  @relation(fields: [categoriaId], references: [id])
+  negocios    Negocio[]
+}
+
+// Añadimos la FK opcional en Negocio → Subcategoria
+// (colócalo en tu modelo Negocio si no lo tienes ya)
+// NOTE: si ya tienes migraciones, crea una nueva con prisma migrate
+
+// --- PATCH EN Negocio ---
+//  subcategoriaId Int?
+//  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+
+// ==============================
+// 📦 SEED: Categorías y Subcategorías masivas
+// ==============================
+// Archivo sugerido: prisma/seed.ts
+// Ejecuta con: npx prisma db seed (configura package.json -> "prisma": { "seed": "ts-node prisma/seed.ts" })
+
+/*
+  package.json (ejemplo):
+  {
+    "devDependencies": { "ts-node": "^10", "typescript": "^5" },
+    "prisma": { "seed": "ts-node prisma/seed.ts" }
+  }
+*/
+
+// prisma/seed.ts
+// -------------------------------------------------
+// Este seed crea ~30 categorías y >180 subcategorías comunes en una gran ciudad.
+// Ajusta libremente; evita duplicados por unique(nombre).
+
+/*
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+const data: Array<{ nombre: string; subcategorias: string[] }> = [
+  {
+    nombre: 'Restauración y Alimentación',
+    subcategorias: [
+      'Restaurante tradicional', 'Bar de tapas', 'Cervecería', 'Cafetería', 'Panadería', 'Pastelería', 'Heladería',
+      'Hamburguesería', 'Pizzería', 'Kebab / Döner', 'Wok / Asiático rápido', 'Gastrobar', 'Asador / Parrilla',
+      'Comida para llevar', 'Comida vegana', 'Comida vegetariana', 'Restaurante italiano', 'Restaurante japonés',
+      'Restaurante chino', 'Restaurante mexicano', 'Restaurante peruano', 'Restaurante colombiano', 'Restaurante brasileño',
+      'Sushi bar', 'Tapería', 'Food truck', 'Vinoteca', 'Bodega con degustación', 'Churrería'
+    ]
+  },
+  {
+    nombre: 'Salud y Bienestar',
+    subcategorias: [
+      'Clínica dental', 'Óptica', 'Farmacia', 'Parafarmacia', 'Psicología', 'Fisioterapia', 'Nutrición',
+      'Podología', 'Logopedia', 'Psquiatría', 'Centro médico', 'Rehabilitación', 'Acupuntura', 'Quiromasaje',
+      'Centro de fertilidad', 'Veterinaria', 'Centro médico estético'
+    ]
+  },
+  {
+    nombre: 'Belleza y Cuidado personal',
+    subcategorias: [
+      'Peluquería', 'Barbería', 'Centro de estética', 'Manicura y pedicura', 'Depilación láser', 'Depilación cera',
+      'Maquillaje profesional', 'Centro de bronceado', 'Spa urbano', 'Micropigmentación', 'Extensiones de pestañas'
+    ]
+  },
+  {
+    nombre: 'Moda y Complementos',
+    subcategorias: [
+      'Tienda de ropa hombre', 'Tienda de ropa mujer', 'Infantil / bebé', 'Boutique', 'Zapatería', 'Deportiva',
+      'Vintage / segunda mano', 'Ropa de trabajo', 'Trajes de boda / fiesta', 'Lencería', 'Sombrerería', 'Arreglos de ropa'
+    ]
+  },
+  {
+    nombre: 'Automoción y Transporte',
+    subcategorias: [
+      'Taller mecánico', 'Chapa y pintura', 'Taller de motos', 'Lavado de vehículos', 'Recambios', 'ITV / pre-ITV',
+      'Neumáticos', 'Grúas', 'Alquiler de coches', 'Alquiler de furgonetas', 'Parking privado', 'Taller eléctrico'
+    ]
+  },
+  {
+    nombre: 'Hogar y Decoración',
+    subcategorias: [
+      'Muebles', 'Decoración', 'Iluminación', 'Menaje', 'Textil hogar', 'Bricolaje / DIY', 'Electrodomésticos',
+      'Cortinas y estores', 'Colchonería', 'Tienda de cocinas', 'Reformas integrales', 'Puertas y armarios'
+    ]
+  },
+  {
+    nombre: 'Tecnología y Comunicaciones',
+    subcategorias: [
+      'Informática', 'Reparación de móviles', 'Telefonía', 'Fotografía', 'Impresión 3D', 'Videovigilancia',
+      'Tiendas de videojuegos', 'Servicio técnico electrónica', 'Ciber café'
+    ]
+  },
+  {
+    nombre: 'Cultura y Ocio',
+    subcategorias: [
+      'Librería', 'Papelería', 'Tienda de cómics', 'Tienda de música y vinilos', 'Galería de arte', 'Centro cultural',
+      'Sala de conciertos', 'Cine', 'Teatro', 'Escape room', 'Sala de exposiciones', 'Estudio de grabación'
+    ]
+  },
+  {
+    nombre: 'Educación y Formación',
+    subcategorias: [
+      'Academia de idiomas', 'Refuerzo escolar', 'Oposiciones', 'Autoescuela', 'Escuela de música', 'Escuela de danza',
+      'Centro de formación profesional', 'Guardería / infantil', 'Clases particulares'
+    ]
+  },
+  {
+    nombre: 'Mascotas',
+    subcategorias: [
+      'Tienda de animales', 'Piensos y accesorios', 'Peluquería canina', 'Adiestramiento', 'Residencia / guardería', 'Clínica veterinaria'
+    ]
+  },
+  {
+    nombre: 'Servicios Profesionales',
+    subcategorias: [
+      'Asesoría fiscal', 'Gestoría', 'Abogacía', 'Arquitectura', 'Ingeniería', 'Consultoría', 'Notaría', 'Recursos humanos',
+      'Agencia de seguros', 'Agencia de viajes', 'Traducción e interpretación'
+    ]
+  },
+  {
+    nombre: 'Deportes y Actividad Física',
+    subcategorias: [
+      'Gimnasio', 'Crossfit', 'Yoga', 'Pilates', 'Artes marciales', 'Boxeo', 'Centro de escalada', 'Pádel', 'Tenis',
+      'Club de running', 'Natación', 'Tienda de material deportivo'
+    ]
+  },
+  {
+    nombre: 'Alimentación al por menor',
+    subcategorias: [
+      'Supermercado', 'Ultramarinos', 'Frutería', 'Carnicería', 'Pescadería', 'Charcutería', 'Gourmet / delicatessen',
+      'Ecológico / bio', 'Congelados', 'Bodega / vinoteca', 'Tienda de cerveza artesanal'
+    ]
+  },
+  {
+    nombre: 'Servicios Técnicos y Reparación',
+    subcategorias: [
+      'Cerrajería', 'Fontanería', 'Electricidad', 'Albañilería', 'Carpintería', 'Cristalería', 'Pintura y decoración',
+      'Tapicería', 'Reparación de electrodomésticos', 'Llaves y duplicados', 'Mudanzas', 'Instalación de climatización'
+    ]
+  },
+  {
+    nombre: 'Ocio Nocturno',
+    subcategorias: [
+      'Discoteca', 'Pub', 'Coctelería', 'Bar musical', 'Karaoke', 'Sala de fiestas'
+    ]
+  },
+  {
+    nombre: 'Turismo y Alojamiento',
+    subcategorias: [
+      'Hotel', 'Hostal', 'Apartamento turístico', 'Casa rural', 'Albergue', 'Tour operador local', 'Guía turístico', 'Oficina de turismo'
+    ]
+  },
+  {
+    nombre: 'Transporte Urbano y Mensajería',
+    subcategorias: [
+      'Mensajería local', 'Reparto a domicilio', 'Taxis / VTC', 'Alquiler de bicis / patinetes', 'Parking bicicletas', 'Moto sharing'
+    ]
+  },
+  {
+    nombre: 'Finanzas y Banca',
+    subcategorias: [
+      'Sucursal bancaria', 'Cajero / ATM', 'Casa de cambio', 'Fintech local', 'Correduría de seguros'
+    ]
+  },
+  {
+    nombre: 'Eventos y Celebraciones',
+    subcategorias: [
+      'Organización de eventos', 'Catering', 'Alquiler de sonido e iluminación', 'Fotomatón', 'Flores para eventos',
+      'Trajes de ceremonia', 'Wedding planner', 'Salón de celebraciones'
+    ]
+  },
+  {
+    nombre: 'Foto y Audiovisual',
+    subcategorias: [
+      'Estudio fotográfico', 'Videógrafo', 'Alquiler de material', 'Revelado e impresión', 'Drones / aerial'
+    ]
+  },
+  {
+    nombre: 'Arte y Artesanía',
+    subcategorias: [
+      'Taller de cerámica', 'Taller de joyería', 'Marquetería', 'Luthería', 'Artesanía textil', 'Serigrafía / estampación'
+    ]
+  },
+  {
+    nombre: 'Infantil y Familia',
+    subcategorias: [
+      'Parque infantil', 'Ludoteca', 'Tienda de juguetes', 'Ropa infantil', 'Animación infantil', 'Fotografía infantil'
+    ]
+  },
+  {
+    nombre: 'Mayores y Cuidados',
+    subcategorias: [
+      'Centro de día', 'Ayuda a domicilio', 'Ortopedia', 'Rehabilitación geriátrica', 'Teleasistencia'
+    ]
+  },
+  {
+    nombre: 'Mercados y Agricultura',
+    subcategorias: [
+      'Mercado municipal', 'Plaza de abastos', 'Venta de proximidad', 'Huertos urbanos', 'Cooperativa agrícola'
+    ]
+  },
+  {
+    nombre: 'Energía y Sostenibilidad',
+    subcategorias: [
+      'Instalación fotovoltaica', 'Comunidad energética', 'Auditoría energética', 'Movilidad eléctrica', 'Reciclaje y residuos'
+    ]
+  },
+  {
+    nombre: 'Coworking y Negocios',
+    subcategorias: [
+      'Coworking', 'Oficinas compartidas', 'Aceleradora', 'Incubadora', 'Salas de reuniones'
+    ]
+  },
+  {
+    nombre: 'Servicios Domésticos',
+    subcategorias: [
+      'Limpieza', 'Plancha a domicilio', 'Cuidado de niños', 'Cuidado de mascotas', 'Manitas / handyman'
+    ]
+  },
+  {
+    nombre: 'Juegos y Aficiones',
+    subcategorias: [
+      'Tienda de juegos de mesa', 'Tienda de hobbies', 'Modelismo', 'Comics y manga', 'Cartas coleccionables', 'Sala gaming / eSports'
+    ]
+  },
+  {
+    nombre: 'Especializados / Otros',
+    subcategorias: [
+      'Antigüedades', 'Numismática y filatelia', 'Sex shop', 'Tienda de disfraces', 'Rotulación e impresión', 'Mercería'
+    ]
+  },
+]
+
+
+async function main() {
+  for (const cat of data) {
+    const categoria = await prisma.categoria.upsert({
+      where: { nombre: cat.nombre },
+      update: {},
+      create: { nombre: cat.nombre },
+    })
+    for (const s of cat.subcategorias) {
+      await prisma.subcategoria.upsert({
+        where: { nombre: s },
+        update: { categoriaId: categoria.id },
+        create: { nombre: s, categoriaId: categoria.id },
+      })
+    }
+  }
+}
+
+main()
+  .then(() => prisma.$disconnect())
+  .catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1) })
+*/
+
+
+// ==============================
+// 🌸 Economía de Pétalos (versión simple, sin rifas ni superlikes)
+// ==============================
+// Reglas:
+//  - Publicar una reseña → +5 pétalos al autor
+//  - Recibir una reseña en tu negocio → +5 pétalos al dueño del negocio
+//  - Dar like a una reseña → −1 pétalo (se quema). Si saldo < 1, no puedes dar like.
+//  - Objetivo: ciclo simple de ganar (crear) y gastar (reaccionar).
+
+// ---- PATCH PRISMA ----
+// Añade saldo + ledger de transacciones
+model PetaloTx {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  delta     Int      // + gana, - gasta
+  motivo    String   // 'resena_autor','resena_negocio','like'
+  refTipo   String?  // 'Resena','Post'
+  refId     Int?
+  creadoEn  DateTime @default(now())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId, creadoEn])
+  @@index([refTipo, refId])
+}
+
+// PATCH en Usuario: añade campos si no existen
+// petalosSaldo Int      @default(0)
+// petalosTx    PetaloTx[]
+
+// ------------------------------
+// 🧠 Servicios (NestJS/Prisma) – implementación mínima
+// ------------------------------
+/*
+// petals.service.ts
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+export class PetalsService {
+  async awardOnReview(resenaId: number) {
+    return prisma.$transaction(async (tx) => {
+      const resena = await tx.resena.findUnique({
+        where: { id: resenaId },
+        include: { negocio: { select: { dueñoId: true } }, usuario: { select: { id: true } } },
+      })
+      if (!resena) throw new Error('Reseña no encontrada')
+
+      // +5 al autor
+      await tx.petaloTx.create({ data: { usuarioId: resena.usuarioId, delta: 5, motivo: 'resena_autor', refTipo: 'Resena', refId: resena.id } })
+      await tx.usuario.update({ where: { id: resena.usuarioId }, data: { petalosSaldo: { increment: 5 } } })
+
+      // +5 al dueño del negocio (si existe y no es la misma persona)
+      const duenoId = resena.negocio?.dueñoId
+      if (duenoId && duenoId !== resena.usuarioId) {
+        await tx.petaloTx.create({ data: { usuarioId: duenoId, delta: 5, motivo: 'resena_negocio', refTipo: 'Resena', refId: resena.id } })
+        await tx.usuario.update({ where: { id: duenoId }, data: { petalosSaldo: { increment: 5 } } })
+      }
+
+      return { ok: true }
+    })
+  }
+
+  async likeResena(usuarioId: number, postId: number) {
+    return prisma.$transaction(async (tx) => {
+      const u = await tx.usuario.findUnique({ where: { id: usuarioId }, select: { petalosSaldo: true } })
+      if (!u || u.petalosSaldo < 1) throw new Error('Saldo insuficiente de pétalos')
+
+      // registrar like normal en tu modelo Like
+      await tx.like.create({ data: { usuarioId, postId, tipo: 'like' } })
+
+      // cobrar 1 pétalo (burn)
+      await tx.petaloTx.create({ data: { usuarioId, delta: -1, motivo: 'like', refTipo: 'Post', refId: postId } })
+      await tx.usuario.update({ where: { id: usuarioId }, data: { petalosSaldo: { decrement: 1 } } })
+
+      return { ok: true }
+    })
+  }
+}
+*/
+
+// ------------------------------
+// ✅ Anti-abuso mínimos (opcional)
+// ------------------------------
+// - Evitar que el dueño se auto-premie reseñando su propio negocio: ya lo impedimos si dueñoId === autorId.
+// - (Opcional) Máx. 2 reseñas recompensadas por autor/día.
+// - (Opcional) Reseñas de calidad: longitud mínima o compra/reserva asociada.
+
+
+# API v1 – Endpoints propuestos (cobertura total)
+_Base path_: `/api/v1`  · Auth via Bearer JWT  · Paginación: `?page=1&limit=20`  · Filtros comunes: `?q=texto&sort=-creadoEn`
+
+## 0) Salud
+- `GET /health` → estado del servicio
+
+## 1) Auth
+- `POST /auth/register` → {nombre, nickname, email, password}
+- `POST /auth/login` → {email, password}
+- `POST /auth/refresh` → refresh token
+- `POST /auth/logout`
+- `POST /auth/forgot-password` → {email}
+- `POST /auth/reset-password` → {token, newPassword}
+- `POST /auth/verify-email` → {token}
+
+## 2) Usuario
+- `GET  /me` → perfil propio + saldos (pétalos)
+- `PATCH /me` → actualizar {nombre, bio, foto}
+- `GET  /me/petalos/balance`
+- `GET  /me/petalos/tx` → ledger (paginado)
+- `GET  /usuarios/:id` → perfil público
+- `GET  /usuarios` → listado/búsqueda
+- `PATCH /usuarios/:id` (admin)
+- `DELETE /usuarios/:id` (admin)
+
+## 3) Categorías & Subcategorías
+- `GET  /categorias`
+- `POST /categorias` (admin)
+- `PATCH /categorias/:id` (admin)
+- `DELETE /categorias/:id` (admin)
+- `GET  /subcategorias?categoriaId=`
+- `POST /subcategorias` (admin)
+- `PATCH /subcategorias/:id` (admin)
+- `DELETE /subcategorias/:id` (admin)
+
+## 4) Negocios
+- `GET  /negocios` → filtros: `?categoriaId&subcategoriaId&q`
+- `POST /negocios` (dueño) → crear negocio (dueñoId = me)
+- `GET  /negocios/:id`
+- `PATCH /negocios/:id` (dueño/admin)
+- `DELETE /negocios/:id` (dueño/admin)
+- `PATCH /negocios/:id/config-horario` → {horario, intervaloReserva}
+- `GET  /negocios/:id/horario`
+- `GET  /negocios/:id/posts`
+- `GET  /negocios/:id/resenas`
+- `GET  /negocios/:id/reservas?desde=&hasta=`
+- `GET  /negocios/:id/availability?date=YYYY-MM-DD` → genera slots por `intervaloReserva`
+
+## 5) Productos
+- `GET  /negocios/:id/productos`
+- `POST /negocios/:id/productos` (dueño)
+- `GET  /productos/:id`
+- `PATCH /productos/:id` (dueño)
+- `DELETE /productos/:id` (dueño)
+
+## 6) Promociones
+- `GET  /negocios/:id/promociones`
+- `POST /negocios/:id/promociones` (dueño)
+- `GET  /promociones/:id`
+- `PATCH /promociones/:id` (dueño)
+- `DELETE /promociones/:id` (dueño)
+
+## 7) Posts (unificado)
+- `GET  /posts?tipo=&usuarioId=&negocioId=`
+- `GET  /posts/:id`
+- `DELETE /posts/:id` (autor/admin)
+
+## 8) Reseñas (como tipo de Post + tabla Resena)
+- `POST /negocios/:id/resenas` → {contenido, puntuacion, selloNenufar}
+  - **Side-effect**: crea `Post` tipo reseña y **paga pétalos** (+5 autor, +5 dueño)
+- `GET  /resenas/:id`
+- `PATCH /resenas/:id` (autor)
+- `DELETE /resenas/:id` (autor/admin)
+
+## 9) Comentarios
+- `GET  /posts/:id/comentarios`
+- `POST /posts/:id/comentarios` → {contenido}
+- `PATCH /comentarios/:id` (autor)
+- `DELETE /comentarios/:id` (autor/admin)
+
+## 10) Likes
+- `POST   /posts/:id/like` → consume **1 pétalo** (si saldo≥1), crea `Like(tipo='like')`
+- `DELETE /posts/:id/like` → quita like (no reembolsa pétalos)
+- `GET    /posts/:id/likes` → conteo y listado
+
+## 11) Reservas (horario genérico)
+- `GET  /negocios/:id/availability?date=YYYY-MM-DD` → slots generados
+- `POST /negocios/:id/reservas` → {fecha, nota}
+- `GET  /reservas/:id`
+- `DELETE /reservas/:id` (usuario/dueño)
+- `GET  /me/reservas`
+
+## 12) Mesas (módulo opcional)
+- `GET  /negocios/:id/mesas`
+- `POST /negocios/:id/mesas` (dueño) → {nombre, capacidad, ubicacion}
+- `PATCH /mesas/:id` (dueño)
+- `DELETE /mesas/:id` (dueño)
+- `GET  /negocios/:id/mesas/availability?date=YYYY-MM-DD&desde=HH:mm&hasta=HH:mm`
+- `POST /mesas/:id/reservas` → {usuarioId?, fecha, horaInicio, horaFin, nota}
+- `GET  /reservas-mesa/:id`
+- `DELETE /reservas-mesa/:id` (usuario/dueño)
+
+## 13) Pedidos / Compras / Pagos
+- **Carrito/Pedido**
+  - `POST /negocios/:id/pedidos` → crea pedido vacío
+  - `GET  /pedidos/:id`
+  - `POST /pedidos/:id/items` → {productoId, cantidad}
+  - `PATCH /pedidos/:id/items/:itemId` → {cantidad}
+  - `DELETE /pedidos/:id/items/:itemId`
+  - `PATCH /pedidos/:id` → {estado}
+- **Compra** (por usuario que participa)
+  - `POST /pedidos/:id/compras` → {usuarioId, total}
+  - `GET  /compras/:id`
+  - `GET  /me/compras`
+- **Pago**
+  - `POST /compras/:id/pagos` → {metodoPago, cantidad}
+  - `GET  /pagos/:id`
+  - `GET  /me/pagos`
+
+## 14) Logros
+- `GET  /logros` → filtros: `?tipo=&objetivoTipo=&objetivoId=`
+- `POST /logros` (admin)
+- `PATCH /logros/:id` (admin)
+- `DELETE /logros/:id` (admin)
+- `GET  /me/logros` → progreso
+- `POST /logros/:id/grant` (admin) → concede manualmente a un usuario {usuarioId}
+
+## 15) Pétalos (economía simple)
+- `GET  /me/petalos/balance`
+- `GET  /me/petalos/tx` → historial
+- (Automático) **on reseña creada** → `+5 autor`, `+5 dueño negocio`
+- (Automático) **on like** → `−1` del que da like (si saldo<1 → 409)
+- `POST /admin/petalos/ajustar` (admin) → {usuarioId, delta, motivo}
+- `GET  /economia/config` (admin)
+- `PATCH /economia/config` (admin) → ajustar reglas si hiciera falta
+
+## 16) Búsqueda y Feed
+- `GET /search` → busca en negocios/productos/posts (`?q=&tipo=`)
+- `GET /feed` → timeline de posts (novedades, reseñas, promos)
+
+## 17) Admin (seguridad/gestión)
+- `GET  /admin/metrics` → conteos, M2 de pétalos, DAU, etc.
+- `PATCH /admin/usuarios/:id/ban`
+- `GET  /admin/auditoria/petalos` → agregados de `PetaloTx`
+
+---
+### Notas de implementación
+- **Eventos automáticos**: pagar pétalos al crear reseña y cobrar al dar like se hacen en **transacciones** de los endpoints correspondientes.
+- **Errores**: usar 400 (validación), 401/403 (auth), 404 (no existe), 409 (conflicto: saldo < 1 para like), 422 (regla negocio), 500 (server).
+- **Idempotencia**: pagos con `Idempotency-Key` en cabecera.
+- **Rate limiting**: `/auth/*` y `/posts/:id/like`.
+- **Paginación**: `X-Total-Count` en cabecera.

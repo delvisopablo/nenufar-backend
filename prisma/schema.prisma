@@ -1,0 +1,370 @@
+// ---------- Generators & datasource ----------
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+enum PedidoEstado {
+  PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
+enum CompraEstado {
+  PENDIENTE
+  COMPLETADA
+  CANCELADA
+}
+
+enum PagoEstado {
+  PENDIENTE
+  PAGADO
+  FALLIDO
+}
+
+enum MetodoPago {
+  TARJETA
+  BIZUM
+  EFECTIVO
+  STRIPE
+  OTRO
+}
+
+enum LogroTipo {
+  COMPRA
+  RESENA
+  PROMOCION
+  RESERVA
+  OTRO
+}
+
+enum Dificultad {
+  FACIL
+  MEDIA
+  DURA
+  LEGENDARIA
+}
+
+// ---------- Modelos ----------
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  nickname  String   @unique
+  email     String   @unique
+  password  String
+  foto      String?
+  creadoEn  DateTime @default(now())
+  biografia String?
+
+  // Economía (simple)
+  petalosSaldo Int        @default(0)
+  petalosTx    PetaloTx[]
+
+  // Relaciones
+  negocios      Negocio[]      @relation("DuenoNegocio")
+  resenas       Resena[]
+  reservas      Reserva[]
+  compras       Compra[]
+  comentarios   Comentario[]
+  posts         Post[]
+  logrosUsuario LogroUsuario[]
+  likes         Like[] // <— renombrado (antes Like[])
+}
+
+model Categoria {
+  id            Int            @id @default(autoincrement())
+  nombre        String         @unique
+  negocios      Negocio[]
+  subcategorias Subcategoria[]
+  Logro         Logro[]
+}
+
+model Subcategoria {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique
+  categoriaId Int
+  categoria   Categoria @relation(fields: [categoriaId], references: [id])
+  negocios    Negocio[]
+  Logro       Logro[]
+}
+
+model Negocio {
+  id               Int      @id @default(autoincrement())
+  nombre           String
+  historia         String?
+  fechaFundacion   DateTime
+  direccion        String?
+  categoriaId      Int
+  duenoId          Int
+  creadoEn         DateTime @default(now())
+  horario          Json?
+  intervaloReserva Int?
+
+  // Subcategoría opcional
+  subcategoriaId Int?
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+
+  categoria Categoria @relation(fields: [categoriaId], references: [id])
+  dueno     Usuario   @relation("DuenoNegocio", fields: [duenoId], references: [id])
+
+  productos   Producto[]
+  promociones Promocion[]
+  resenas     Resena[]
+  reservas    Reserva[]
+  logros      Logro[]
+  posts       Post[]
+  pedidos     Pedido[] // <— renombrado (antes Pedido[])
+  // ❌ compras: eliminado (no hay FK Negocio ← Compra)
+
+  @@index([categoriaId])
+  @@index([subcategoriaId])
+  @@index([duenoId])
+}
+
+model Producto {
+  id          Int     @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  precio      Float
+  negocioId   Int
+
+  negocio            Negocio     @relation(fields: [negocioId], references: [id])
+  promocionPrincipal Promocion[] @relation("ProductoPrincipal")
+  promociones        Promocion[] @relation("PromocionPack")
+
+  pedidoProductos PedidoProducto[]
+  // ❌ Post[] eliminado (Post v2 no referencia producto)
+  Logro           Logro[]
+
+  @@index([negocioId])
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  negocioId Int?
+  creadoEn  DateTime @default(now())
+
+  // one-of
+  resenaId    Int?
+  promocionId Int?
+  logroId     Int?
+
+  usuario   Usuario    @relation(fields: [usuarioId], references: [id])
+  negocio   Negocio?   @relation(fields: [negocioId], references: [id])
+  resena    Resena?    @relation(fields: [resenaId], references: [id])
+  promocion Promocion? @relation(fields: [promocionId], references: [id])
+  logro     Logro?     @relation(fields: [logroId], references: [id])
+
+  comentarios Comentario[]
+  likes       Like[]
+
+  @@index([creadoEn])
+  @@index([usuarioId])
+  @@index([negocioId])
+  @@index([resenaId])
+  @@index([promocionId])
+  @@index([logroId])
+}
+
+model Resena {
+  id           Int      @id @default(autoincrement())
+  contenido    String
+  puntuacion   Int
+  selloNenufar Boolean  @default(false)
+  usuarioId    Int
+  negocioId    Int
+  creadoEn     DateTime @default(now())
+
+  negocio Negocio @relation(fields: [negocioId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  Post    Post[]
+
+  @@index([negocioId])
+  @@index([usuarioId])
+  @@index([creadoEn])
+}
+
+model Promocion {
+  id             Int      @id @default(autoincrement())
+  titulo         String
+  descripcion    String?
+  negocioId      Int
+  creadoEn       DateTime @default(now())
+  descuento      Float
+  fechaCaducidad DateTime
+  productoId     Int?
+
+  negocio  Negocio    @relation(fields: [negocioId], references: [id])
+  producto Producto?  @relation("ProductoPrincipal", fields: [productoId], references: [id])
+  pack     Producto[] @relation("PromocionPack")
+  Post     Post[]
+
+  @@index([negocioId])
+  @@index([productoId])
+  @@index([fechaCaducidad])
+}
+
+model Logro {
+  id               Int        @id @default(autoincrement())
+  titulo           String
+  descripcion      String?
+  tipo             LogroTipo
+  dificultad       Dificultad @default(FACIL)
+  umbral           Int
+  recompensaPuntos Int
+
+  categoriaId    Int?
+  subcategoriaId Int?
+  negocioId      Int?
+  productoId     Int?
+
+  categoria    Categoria?    @relation(fields: [categoriaId], references: [id])
+  subcategoria Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+  negocio      Negocio?      @relation(fields: [negocioId], references: [id])
+  producto     Producto?     @relation(fields: [productoId], references: [id])
+
+  logrosUsuario LogroUsuario[]
+  Post          Post[]
+
+  @@index([categoriaId])
+  @@index([subcategoriaId])
+  @@index([negocioId])
+  @@index([productoId])
+}
+
+model Pedido {
+  id        Int          @id @default(autoincrement())
+  negocioId Int
+  estado    PedidoEstado @default(PENDIENTE)
+  creadoEn  DateTime     @default(now())
+
+  negocio         Negocio          @relation(fields: [negocioId], references: [id])
+  pedidoProductos PedidoProducto[]
+  compras         Compra[]
+
+  @@index([negocioId])
+}
+
+model Compra {
+  id        Int          @id @default(autoincrement())
+  pedidoId  Int
+  usuarioId Int
+  total     Float
+  estado    CompraEstado @default(PENDIENTE)
+  creadoEn  DateTime     @default(now())
+
+  pedido  Pedido  @relation(fields: [pedidoId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  pagos   Pago[]
+
+  @@index([pedidoId])
+  @@index([usuarioId])
+}
+
+model Pago {
+  id         Int        @id @default(autoincrement())
+  compraId   Int
+  metodoPago MetodoPago
+  estado     PagoEstado @default(PENDIENTE)
+  cantidad   Float
+  creadoEn   DateTime   @default(now())
+
+  compra Compra @relation(fields: [compraId], references: [id])
+
+  @@index([compraId])
+}
+
+model Reserva {
+  id        Int      @id @default(autoincrement())
+  fecha     DateTime
+  usuarioId Int
+  negocioId Int
+  nota      String?
+  creadoEn  DateTime @default(now())
+
+  negocio Negocio @relation(fields: [negocioId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@index([negocioId])
+  @@index([usuarioId])
+  @@index([fecha])
+}
+
+model Comentario {
+  id        Int      @id @default(autoincrement())
+  contenido String
+  usuarioId Int
+  postId    Int
+  creadoEn  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  post    Post    @relation(fields: [postId], references: [id])
+
+  @@index([postId])
+  @@index([usuarioId])
+}
+
+model Like {
+  id        Int      @id @default(autoincrement())
+  tipo      String // 'like'
+  usuarioId Int
+  postId    Int
+  creadoEn  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  post    Post    @relation(fields: [postId], references: [id])
+
+  @@unique([usuarioId, postId])
+  @@index([postId])
+}
+
+model PedidoProducto {
+  id             Int   @id @default(autoincrement())
+  pedidoId       Int
+  productoId     Int
+  cantidad       Int
+  precioUnitario Float
+
+  pedido   Pedido   @relation(fields: [pedidoId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@unique([pedidoId, productoId])
+  @@index([pedidoId])
+  @@index([productoId])
+}
+
+model LogroUsuario {
+  id           Int       @id @default(autoincrement())
+  logroId      Int
+  usuarioId    Int
+  veces        Int       @default(0)
+  conseguido   Boolean   @default(false)
+  conseguidoEn DateTime?
+
+  logro   Logro   @relation(fields: [logroId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@unique([logroId, usuarioId])
+  @@index([usuarioId])
+}
+
+model PetaloTx {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  delta     Int
+  motivo    String // 'resena_autor' | 'resena_negocio' | 'like' | ...
+  refTipo   String?
+  refId     Int?
+  creadoEn  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId, creadoEn])
+  @@index([refTipo, refId])
+}
