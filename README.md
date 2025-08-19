@@ -1,98 +1,219 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Nenúfar Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API backend del proyecto **Nenúfar**, construido con **NestJS**, **Prisma** y **PostgreSQL**. Preparado para despliegue en **Render**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🧱 Stack
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+* **Node.js** (18+)
+* **NestJS** (REST)
+* **Prisma** (ORM)
+* **PostgreSQL**
+* **JWT** para autenticación
 
-## Project setup
+---
 
-```bash
-$ npm install
+## ✅ Requisitos previos
+
+* Node 18+ y npm o yarn
+* PostgreSQL local (opcional para desarrollo)
+* Cuenta en Render.com
+
+---
+
+## ⚙️ Variables de entorno
+
+Crea un archivo `.env` en la raíz con:
+
+```env
+# Base de datos (local o Render)
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DBNAME?schema=public"
+
+# JWT
+JWT_SECRET="cambia-esto-por-un-secreto-largo"
+JWT_EXPIRES_IN="1d" # opcional
+
+# Entorno/app
+NODE_ENV="development"
+PORT=3000 # En Render, Render inyecta PORT automáticamente; el código debe usar process.env.PORT
 ```
 
-## Compile and run the project
+> Asegúrate de **NO** commitear `.env`. Manténlo fuera del control de versiones.
+
+---
+
+## 🔧 Puesta en marcha local
 
 ```bash
-# development
-$ npm run start
+# 1) Dependencias
+npm ci # o npm install
 
-# watch mode
-$ npm run start:dev
+# 2) Generar Prisma client
+npx prisma generate
 
-# production mode
-$ npm run start:prod
+# 3) Crear migraciones (si aún no existen)
+# crea una migración inicial a partir del schema.prisma
+npx prisma migrate dev --name init
+
+# 4) Levantar en desarrollo
+npm run start:dev
 ```
 
-## Run tests
+Scripts típicos en `package.json` (ajusta si es necesario):
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+```json
+{
+  "scripts": {
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "build": "nest build",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy"
+  }
+}
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## 🧪 Salud del servicio
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+* Asegura que **Nest** escucha en `process.env.PORT` si existe:
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+  ```ts
+  // main.ts
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+  await app.listen(port);
+  ```
+* (Opcional) expón un endpoint de **healthcheck**, por ejemplo `GET /health`:
+
+  ```ts
+  // app.controller.ts
+  @Get('health')
+  health() { return { ok: true }; }
+  ```
+
+---
+
+## 🚀 Despliegue en Render (GUI)
+
+1. **Crear Base de Datos** en Render: *New → PostgreSQL*.
+
+   * Guarda el **Internal Database URL** (mejor para redes internas) o el **External** si lo necesitas.
+2. **Crear Web Service**: *New → Web Service → Connect a repository* y elige este repo.
+3. **Runtime**: Node 18+.
+4. **Build Command**:
+
+   ```bash
+   npm ci && npm run build && npx prisma generate && npx prisma migrate deploy
+   ```
+5. **Start Command**:
+
+   ```bash
+   node dist/main.js
+   ```
+6. **Environment variables** en Render → *Environment*:
+
+   * `DATABASE_URL` = (copiar de la DB de Render)
+   * `JWT_SECRET` = un secreto largo
+   * `NODE_ENV` = `production`
+   * (Render establece `PORT` automáticamente; no lo definas)
+7. **Health Check**: Path `/health` (o `/` si no tienes uno dedicado).
+8. **Auto-Deploy**: activa *Auto-Deploy* desde `main`.
+
+> **Migraciones**: `prisma migrate deploy` aplicará **las migraciones ya commiteadas**. Si no tienes migraciones en el repo, créalas localmente (`prisma migrate dev --name init`) y súbelas.
+
+---
+
+## 📦 Despliegue con `render.yaml` (IaC opcional)
+
+Incluye un archivo `render.yaml` en la raíz y haz push. Render te permitirá crear todo desde ese manifiesto.
+
+```yaml
+services:
+  - type: web
+    name: nenufar-backend
+    runtime: node
+    repo: https://github.com/USUARIO/nenufar-backend
+    branch: main
+    buildCommand: |
+      npm ci
+      npm run build
+      npx prisma generate
+      npx prisma migrate deploy
+    startCommand: node dist/main.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: nenufar-db
+        property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+    healthCheckPath: /health
+
+databases:
+  - name: nenufar-db
+    databaseName: nenufar
+    plan: free
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+> Cambia `USUARIO` por tu usuario de GitHub. Puedes usar `fromDatabase` para inyectar la cadena de conexión automáticamente.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 🧹 .gitignore recomendado
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Crea un `.gitignore` (o añade estas líneas):
 
-## Support
+```gitignore
+node_modules/
+dist/
+.env
+coverage/
+.tmp/
+.prisma/
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## 🐳 (Opcional) Docker local
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```dockerfile
+# Dockerfile
+FROM node:18-alpine as builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build && npx prisma generate
 
-## License
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=builder /app/package*.json ./
+RUN npm ci --omit=dev
+COPY --from=builder /app/dist ./dist
+COPY prisma ./prisma
+ENV NODE_ENV=production
+CMD ["node", "dist/main.js"]
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+---
+
+## 🐞 Troubleshooting rápido
+
+* **`Repository not found` al hacer push**: revisa la URL de `origin` y permisos.
+* **`non-fast-forward`**: `git pull --rebase origin main` o `git push --force-with-lease` si quieres forzar.
+* **Render no levanta**:
+
+  * Revisa *Logs* (Build & Runtime) en Render.
+  * Verifica que `DATABASE_URL` está bien y accesible.
+  * Asegura que el servicio escucha en `process.env.PORT`.
+  * Asegura migraciones commiteadas; usa `npx prisma migrate deploy` en el build.
+
+---
+
+## 📜 Licencia
+
+MIT (o la que decidas).
